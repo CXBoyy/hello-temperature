@@ -1,11 +1,15 @@
-#include <proc/p32mx320f128h.h>
+#include <pic32mx.h>
 #include <stdint.h>
 #include <stdbool.h>
 
-#define DISPLAY_VDD PORTFbits.RF6
-#define DISPLAY_VBATT PORTFbits.RF5
-#define DISPLAY_COMMAND_DATA PORTFbits.RF4
-#define DISPLAY_RESET PORTGbits.RG9
+#define DISPLAY_VDD_PORT PORTF
+#define DISPLAY_VDD_MASK 0x40
+#define DISPLAY_VBATT_PORT PORTF
+#define DISPLAY_VBATT_MASK 0x20
+#define DISPLAY_COMMAND_DATA_PORT PORTF
+#define DISPLAY_COMMAND_DATA_MASK 0x10
+#define DISPLAY_RESET_PORT PORTG
+#define DISPLAY_RESET_MASK 0x200
 
 #define TEMP_SENSOR_ADDR 0x48
 
@@ -156,22 +160,22 @@ void delay(int cyc) {
 }
 
 uint8_t spi_send_recv(uint8_t data) {
-	while(!SPI2STATbits.SPITBE);
+	while(!(SPI2STAT & 0x08));
 	SPI2BUF = data;
-	while(!SPI2STATbits.SPIRBF);
+	while(!(SPI2STAT & 0x01));
 	return SPI2BUF;
 }
 
 void display_init() {
-	DISPLAY_COMMAND_DATA = 0x0;
+	DISPLAY_COMMAND_DATA_PORT &= ~DISPLAY_COMMAND_DATA_MASK;
 	delay(10);
-	DISPLAY_VDD = 0x0;
+	DISPLAY_VDD_PORT &= ~DISPLAY_VDD_MASK;
 	delay(1000000);
 	
 	spi_send_recv(0xAE);
-	DISPLAY_RESET = 0x0;
+	DISPLAY_RESET_PORT &= ~DISPLAY_RESET_MASK;
 	delay(10);
-	DISPLAY_RESET = 0x1;
+	DISPLAY_RESET_PORT |= DISPLAY_RESET_MASK;
 	delay(10);
 	
 	spi_send_recv(0x8D);
@@ -180,7 +184,7 @@ void display_init() {
 	spi_send_recv(0xD9);
 	spi_send_recv(0xF1);
 	
-	DISPLAY_VBATT = 0x0;
+	DISPLAY_VBATT_PORT &= ~DISPLAY_VBATT_MASK;
 	delay(10000000);
 	
 	spi_send_recv(0xA1);
@@ -211,14 +215,14 @@ void display_update() {
 	int i, j, k;
 	int c;
 	for(i = 0; i < 4; i++) {
-		DISPLAY_COMMAND_DATA = 0x0;
+		DISPLAY_COMMAND_DATA_PORT &= ~DISPLAY_COMMAND_DATA_MASK;
 		spi_send_recv(0x22);
 		spi_send_recv(i);
 		
 		spi_send_recv(0x0);
 		spi_send_recv(0x10);
 		
-		DISPLAY_COMMAND_DATA = 0x1;
+		DISPLAY_COMMAND_DATA_PORT |= DISPLAY_COMMAND_DATA_MASK;
 		
 		for(j = 0; j < 16; j++) {
 			c = textbuffer[i][j];
@@ -232,51 +236,51 @@ void display_update() {
 }
 
 void i2c_idle() {
-	while(I2C1CON & 0x1F || I2C1STATbits.TRSTAT);
+	while(I2C1CON & 0x1F || I2C1STAT & (1 << 14)); //TRSTAT
 }
 
 bool i2c_send(uint8_t data) {
 	i2c_idle();
 	I2C1TRN = data;
 	i2c_idle();
-	return !I2C1STATbits.ACKSTAT;
+	return !(I2C1STAT & (1 << 15)); //ACKSTAT
 }
 
 uint8_t i2c_recv() {
 	i2c_idle();
-	I2C1CONbits.RCEN = 1;
+	I2C1CONSET = 1 << 3; //RCEN = 1
 	i2c_idle();
-	I2C1STATbits.I2COV = 0;
+	I2C1STATCLR = 1 << 6; //I2COV = 0
 	return I2C1RCV;
 }
 
 void i2c_ack() {
 	i2c_idle();
-	I2C1CONbits.ACKDT = 0;
-	I2C1CONbits.ACKEN = 1;
+	I2C1CONCLR = 1 << 5; //ACKDT = 0
+	I2C1CONSET = 1 << 4; //ACKEN = 1
 }
 
 void i2c_nack() {
 	i2c_idle();
-	I2C1CONbits.ACKDT = 1;
-	I2C1CONbits.ACKEN = 1;
+	I2C1CONSET = 1 << 5; //ACKDT = 1
+	I2C1CONSET = 1 << 4; //ACKEN = 1
 }
 
 void i2c_start() {
 	i2c_idle();
-	I2C1CONbits.SEN = 1;
+	I2C1CONSET = 1 << 0; //SEN
 	i2c_idle();
 }
 
 void i2c_restart() {
 	i2c_idle();
-	I2C1CONbits.RSEN = 1;
+	I2C1CONSET = 1 << 1; //RSEN
 	i2c_idle();
 }
 
 void i2c_stop() {
 	i2c_idle();
-	I2C1CONbits.PEN = 1;
+	I2C1CONSET = 1 << 2; //PEN
 	i2c_idle();
 }
 
@@ -325,9 +329,10 @@ uint32_t strlen(char *str) {
 int main(void) {
 	uint16_t temp;
 	char buf[32], *s, *t;
-	
+
 	/* Set up peripheral bus clock */
-	OSCCONbits.PBDIV = 1;
+	OSCCON &= ~0x180000;
+	OSCCON |= 0x080000;
 	
 	/* Set up output pins */
 	AD1PCFG = 0xFFFF;
@@ -339,7 +344,7 @@ int main(void) {
 	PORTF = 0xFFFF;
 	PORTG = (1 << 9);
 	ODCF = 0x0;
-	ODCG = 0xC;
+	ODCG = 0x0;
 	TRISFCLR = 0x70;
 	TRISGCLR = 0x200;
 	
@@ -348,21 +353,29 @@ int main(void) {
 	TRISFSET = (1 << 1);
 	
 	/* Set up SPI as master */
-	SPI2CON = 0x0;
+	SPI2CON = 0;
 	SPI2BRG = 4;
-	SPI2STATbits.SPIROV = 0;
-	SPI2CONbits.CKP = 1;
-	SPI2CONbits.MSTEN = 1;
-	SPI2CONbits.ON = 1;
+	
+	/* Clear SPIROV*/
+	SPI2STATCLR &= ~0x40;
+	/* Set CKP = 1, MSTEN = 1; */
+        SPI2CON |= 0x60;
+	
+	/* Turn on SPI */
+	SPI2CONSET = 0x8000;
 	
 	/* Set up i2c */
 	I2C1CON = 0x0;
-	I2C1CONbits.ON = 0;
 	I2C1BRG = 0x0C2;
 	I2C1STAT = 0x0;
-	I2C1CONbits.SIDL = 1;
-	I2C1CONbits.ON = 1;
+	I2C1CONSET = 1 << 13; //SIDL = 1
+	I2C1CONSET = 1 << 15; // ON = 1
 	temp = I2C1RCV;
+	
+	/* Set up input pins */
+	TRISDSET = (1 << 8);
+	TRISFSET = (1 << 1);
+	
 	
 	display_init();
 	display_string(0, "Temperature:");
