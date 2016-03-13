@@ -12,7 +12,7 @@ PROGNAME	= outfile
 LINKSCRIPT	:= p$(shell echo "$(DEVICE)" | tr '[:upper:]' '[:lower:]').ld
 
 # Compiler and linker flags
-CFLAGS		+= -Wall -ffreestanding -march=mips32r2 -msoft-float -Wa,-msoft-float
+CFLAGS		+= -ffreestanding -march=mips32r2 -msoft-float -Wa,-msoft-float
 ASFLAGS		+= -msoft-float
 LDFLAGS		+= -T $(LINKSCRIPT)
 
@@ -81,5 +81,5 @@ $(DEPDIR):
 	$(LD) -o $@ -r --just-symbols=$<
 
 # Check dependencies
--include $(SRCFILES:%.c=$(DEPDIR)/%.c.P)
--include $(ASMFILES:%.S=$(DEPDIR)/%.S.P)
+-include $(CFILES:%.c=$(DEPDIR)/%.c.P)
+-include $(ASFILES:%.S=$(DEPDIR)/%.S.P)
