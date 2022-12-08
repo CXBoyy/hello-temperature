@@ -20,15 +20,106 @@
 #define DISPLAY_RESET_MASK 0x200
 
 /* Address of the temperature sensor on the I2C bus */
-#define TEMP_SENSOR_ADDR 0x48
+#define LSM6DSOX_ADDR 0x6A
 
-/* Temperature sensor internal registers */
-typedef enum TempSensorReg TempSensorReg;
-enum TempSensorReg {
-	TEMP_SENSOR_REG_TEMP,
-	TEMP_SENSOR_REG_CONF,
-	TEMP_SENSOR_REG_HYST,
-	TEMP_SENSOR_REG_LIMIT,
+/* LSM6DSOX internal registers */
+typedef enum LSM6DSOX_REG LSM6DSOX_REG;
+enum LSM6DSOX_REG {
+	FUNC_CFG_ACCESS = 0x1,
+	PIN_CTRL = 0x2,
+	S4S_TPH_L = 0x4,
+	S4S_TPH_H = 0x5,
+	S4S_RR = 0x6,
+	FIFO_CTRL1 = 0x7,
+	FIFO_CTRL2 = 0x8,
+	FIFO_CTRL3 = 0x9,
+	FIFO_CTRL4 = 0x0A,
+	COUNTER_BDR_REG1 = 0x0B,
+	COUNTER_BDR_REG2 = 0x0C,
+	INT1_CTRL = 0x0D,
+	INT2_CTRL = 0x0E,
+	WHO_AM_I = 0x0F,
+	CTRL1_XL = 0x10,
+	CTRL2_G = 0x11,
+	CTRL3_C = 0x12,
+	CTRL4_C = 0x13,
+	CTRL5_C = 0x14,
+	CTRL6_C = 0x15,
+	CTRL7_G = 0x16,
+	CTRL8_XL = 0x17,
+	CTRL9_XL = 0x18,
+	CTRL10_C = 0x19,
+	ALL_INT_SRC = 0x1A,
+	WAKE_UP_SRC = 0x1B,
+	TAP_SRC = 0x1C,
+	D6D_SRC = 0x1D,
+	STATUS_REG = 0x1E,
+	OUT_TEMP_L = 0x20,
+	OUT_TEMP_H = 0x21,
+	OUTX_L_G = 0x22,
+	OUTX_H_G = 0x23,
+	OUTY_L_G = 0x24,
+	OUTY_H_G = 0x25,
+	OUTZ_L_G = 0x26,
+	OUTZ_H_G = 0x27,
+	OUTX_L_A = 0x28,
+	OUTX_H_A = 0x29,
+	OUTY_L_A = 0x2A,
+	OUTY_H_A = 0x2B,
+	OUTZ_L_A = 0x2C,
+	OUTZ_H_A = 0x2D,
+	EMB_FUNC_STATUS_MAINPAGE = 0x35,
+	FSM_STATUS_A_MAINPAGE = 0x36,
+	FSM_STATUS_B_MAINPAGE = 0x37,
+	MLC_STATUS_MAINPAGE = 0x38,
+	STATUS_MASTER_MAINPAGE = 0x39,
+	FIFO_STATUS1 = 0x3A,
+	FIFO_STATUS2 = 0x3B,
+	TIMESTAMP0 = 0x40,
+	TIMESTAMP1 = 0x41,
+	TIMESTAMP2 = 0x42,
+	TIMESTAMP3 = 0x43,
+	UI_STATUS_REG_OIS = 0x49,
+	UI_OUTX_L_G_OIS = 0x4A,
+	UI_OUTX_H_G_OIS = 0x4B,
+	UI_OUTY_L_G_OIS = 0x4C,
+	UI_OUTY_H_G_OIS = 0x4D,
+	UI_OUTZ_L_G_OIS = 0x4E,
+	UI_OUTZ_H_G_OIS = 0x4F,
+	UI_OUTX_L_A_OIS = 0x50,
+	UI_OUTX_H_A_OIS = 0x51,
+	UI_OUTY_L_A_OIS = 0x52,
+	UI_OUTY_H_A_OIS = 0x53,
+	UI_OUTZ_L_A_OIS = 0x54,
+	UI_OUTZ_H_A_OIS = 0x55,
+	TAP_CFG0 = 0x56,
+	TAP_CFG1 = 0x57,
+	TAP_CFG2 = 0x58,
+	TAP_THS_6D = 0x59,
+	INT_DUR2 = 0x5A,
+	WAKE_UP_THS = 0x5B,
+	WAKE_UP_DUR = 0x5C,
+	FREE_FALL = 0x5D,
+	MD1_CFG = 0x5E,
+	MD2_CFG = 0x5F,
+	S4S_ST_CMD_CODE = 0x60,
+	S4S_DT_REG = 0x61,
+	I3C_BUS_AVB = 0x62,
+	INTERNAL_FREQ_FINE = 0x63,
+	UI_INT_OIS = 0x6F,
+	UI_CTRL1_OIS = 0x70,
+	UI_CTRL2_OIS = 0x71,
+	UI_CTRL3_OIS = 0x72,
+	X_OFS_USR = 0x73,
+	Y_OFS_USR = 0x74,
+	Z_OFS_USR = 0x75,
+	FIFO_DATA_OUT_TAG = 0x78,
+	FIFO_DATA_OUT_X_L = 0x79,
+	FIFO_DATA_OUT_X_H = 0x7A,
+	FIFO_DATA_OUT_Y_L = 0x7B,
+	FIFO_DATA_OUT_Y_H = 0x7C,
+	FIFO_DATA_OUT_Z_L = 0x7D,
+	FIFO_DATA_OUT_Z_H = 0x7E
 };
 
 
@@ -170,44 +261,44 @@ void delay(int cyc) {
 	for(i = cyc; i > 0; i--);
 }
 
-uint8_t spi_send_recv(uint8_t data) {
+uint8_t spi_send_recvv(uint8_t data) {
 	while(!(SPI2STAT & 0x08));
 	SPI2BUF = data;
 	while(!(SPI2STAT & 0x01));
 	return SPI2BUF;
 }
 
-void display_init() {
+void display_initt() {
 	DISPLAY_COMMAND_DATA_PORT &= ~DISPLAY_COMMAND_DATA_MASK;
 	delay(10);
 	DISPLAY_VDD_PORT &= ~DISPLAY_VDD_MASK;
 	delay(1000000);
 	
-	spi_send_recv(0xAE);
+	spi_send_recvv(0xAE);
 	DISPLAY_RESET_PORT &= ~DISPLAY_RESET_MASK;
 	delay(10);
 	DISPLAY_RESET_PORT |= DISPLAY_RESET_MASK;
 	delay(10);
 	
-	spi_send_recv(0x8D);
-	spi_send_recv(0x14);
+	spi_send_recvv(0x8D);
+	spi_send_recvv(0x14);
 	
-	spi_send_recv(0xD9);
-	spi_send_recv(0xF1);
+	spi_send_recvv(0xD9);
+	spi_send_recvv(0xF1);
 	
 	DISPLAY_VBATT_PORT &= ~DISPLAY_VBATT_MASK;
 	delay(10000000);
 	
-	spi_send_recv(0xA1);
-	spi_send_recv(0xC8);
+	spi_send_recvv(0xA1);
+	spi_send_recvv(0xC8);
 	
-	spi_send_recv(0xDA);
-	spi_send_recv(0x20);
+	spi_send_recvv(0xDA);
+	spi_send_recvv(0x20);
 	
-	spi_send_recv(0xAF);
+	spi_send_recvv(0xAF);
 }
 
-void display_string(int line, char *s) {
+void display_stringg(int line, char *s) {
 	int i;
 	if(line < 0 || line >= 4)
 		return;
@@ -222,7 +313,7 @@ void display_string(int line, char *s) {
 			textbuffer[line][i] = ' ';
 }
 
-void display_update() {
+void display_updatee() {
 	int i, j, k;
 	int c;
 	for(i = 0; i < 4; i++) {
@@ -399,52 +490,104 @@ int main(void) {
 	TRISFSET = (1 << 1);
 	
 	
-	display_init();
-	display_string(0, "Temperature:");
-	display_string(1, "");
-	display_string(2, "");
-	display_string(3, "");
-	display_update();
+	display_initt();
+	display_stringg(0, "Temperature:");
+	display_stringg(1, "");
+	display_stringg(2, "");
+	display_stringg(3, "");
+	display_updatee();
+
+	int accelerometer_x = 0;
+	int accelerometer_y = 0;
+	int accelerometer_z = 0; 
 	
 	/* Send start condition and address of the temperature sensor with
 	write mode (lowest bit = 0) until the temperature sensor sends
 	acknowledge condition */
 	do {
 		i2c_start();
-	} while(!i2c_send(TEMP_SENSOR_ADDR << 1));
+	} while(!i2c_send(LSM6DSOX_ADDR << 1));
 	/* Send register number we want to access */
-	i2c_send(TEMP_SENSOR_REG_CONF);
-	/* Set the config register to 0 */
-	i2c_send(0x0);
+	i2c_send(FUNC_CFG_ACCESS);
+	/* Set the register */
+	i2c_send(0b11000001);
+	/* Send stop condition */
+	i2c_stop();
+
+	do {
+		i2c_start();
+	} while(!i2c_send(LSM6DSOX_ADDR << 1));
+	/* Send register number we want to access */
+	i2c_send(CTRL1_XL);
+	/* Set the register */
+	i2c_send(0b10100100);
+	/* Send stop condition */
+	i2c_stop();
+
+	do {
+		i2c_start();
+	} while(!i2c_send(LSM6DSOX_ADDR << 1));
+	/* Send register number we want to access */
+	i2c_send(CTRL6_C);
+	/* Set the register */
+	i2c_send(0b11100100);
+	/* Send stop condition */
+	i2c_stop();
+
+	do {
+		i2c_start();
+	} while(!i2c_send(LSM6DSOX_ADDR << 1));
+	/* Send register number we want to access */
+	i2c_send(CTRL3_C);
+	/* Set the register */
+	i2c_send(0b00000000);
+	/* Send stop condition */
+	i2c_stop();
+
+	do {
+		i2c_start();
+	} while(!i2c_send(LSM6DSOX_ADDR << 1));
+	/* Send register number we want to access */
+	i2c_send(CTRL4_C);
+	/* Set the register */
+	i2c_send(0b00001000);
 	/* Send stop condition */
 	i2c_stop();
 	
 	for(;;) {
+		/* 
+			Reading MSB accelerometer X-axis
+		 */
 		/* Send start condition and address of the temperature sensor with
 		write flag (lowest bit = 0) until the temperature sensor sends
 		acknowledge condition */
 		do {
 			i2c_start();
-		} while(!i2c_send(TEMP_SENSOR_ADDR << 1));
+		} while(!i2c_send(LSM6DSOX_ADDR << 1));
 		/* Send register number we want to access */
-		i2c_send(TEMP_SENSOR_REG_TEMP);
-		
+		// Ask for X
+		i2c_send(OUTX_H_A);
+
 		/* Now send another start condition and address of the temperature sensor with
 		read mode (lowest bit = 1) until the temperature sensor sends
 		acknowledge condition */
 		do {
 			i2c_start();
-		} while(!i2c_send((TEMP_SENSOR_ADDR << 1) | 1));
+		} while(!i2c_send((LSM6DSOX_ADDR << 1) | 1));
 		
 		/* Now we can start receiving data from the sensor data register */
-		temp = i2c_recv() << 8;
+		accelerometer_x = i2c_recv() << 8;
+		display_stringg(2, "test");
+		display_updatee();
+
 		i2c_ack();
-		temp |= i2c_recv();
 		/* To stop receiving, send nack and stop */
-		i2c_nack();
+		i2c_nack();																							// I2C Bus gets stuck here
+		display_string(3, "test");
+		display_updatee();
 		i2c_stop();
 		
-		s = fixed_to_string(temp, buf);
+		s = fixed_to_string(accelerometer_x, buf);
 		t = s + strlen(s);
 		*t++ = ' ';
 		*t++ = 7;
@@ -452,7 +595,8 @@ int main(void) {
 		*t++ = 0;
 		
 		display_string(1, s);
-		display_update();
+		display_string(2, accelerometer_x);
+		display_updatee();
 		delay(1000000);
 	}
 	
