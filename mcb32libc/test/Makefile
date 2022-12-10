@@ -12,7 +12,7 @@ PROGNAME	= outfile
 LINKSCRIPT	:= p$(shell echo "$(DEVICE)" | tr '[:upper:]' '[:lower:]').ld
 
 # Compiler and linker flags
-CFLAGS		+= -ffreestanding -march=mips32r2 -msoft-float -Wa,-msoft-float
+CFLAGS		+= -Wall -ffreestanding -march=mips32r2 -msoft-float -Wa,-msoft-float
 ASFLAGS		+= -msoft-float
 LDFLAGS		+= -T $(LINKSCRIPT)
 
@@ -58,7 +58,7 @@ install: envcheck
 	$(TARGET)avrdude -v -p $(shell echo "$(DEVICE)" | tr '[:lower:]' '[:upper:]') -c stk500v2 -P "$(TTYDEV)" -b $(TTYBAUD) -U "flash:w:$(HEXFILE)"
 
 $(ELFFILE): $(OBJFILES) envcheck
-	$(CC) $(CFLAGS) -o $@ $(OBJFILES) $(LDFLAGS) mcb32libc/build/libc.a mcb32libc/build/libm.a
+	$(CC) $(CFLAGS) -o $@ $(OBJFILES) $(LDFLAGS) ../build/libc.a ../build/libm.a
 
 $(HEXFILE): $(ELFFILE) envcheck
 	$(TARGET)bin2hex -a $(ELFFILE)
@@ -81,5 +81,5 @@ $(DEPDIR):
 	$(LD) -o $@ -r --just-symbols=$<
 
 # Check dependencies
--include $(CFILES:%.c=$(DEPDIR)/%.c.P)
--include $(ASFILES:%.S=$(DEPDIR)/%.S.P)
+-include $(SRCFILES:%.c=$(DEPDIR)/%.c.P)
+-include $(ASMFILES:%.S=$(DEPDIR)/%.S.P)
