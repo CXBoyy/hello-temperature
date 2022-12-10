@@ -546,67 +546,25 @@ int main(void) {
 	int accelerometer_z = 0;
 	int test_out = 0; 
 	
-	i2c_write_register(CTRL3_C, 0x1); // Reset device
 
-	/* Send start condition and address of the temperature sensor with
-	write mode (lowest bit = 0) until the temperature sensor sends
-	acknowledge condition */
-	do {
-		i2c_start();
-	} while(!i2c_send(LSM6DSOX_ADDR << 1));
-	/* Send register number we want to access */
-	i2c_send(FUNC_CFG_ACCESS);
-	/* Set the register */
-	i2c_send(0b01000000);
-	/* Send stop condition */
-	i2c_stop();
-
-	do {
-		i2c_start();
-	} while(!i2c_send(LSM6DSOX_ADDR << 1));
-	/* Send register number we want to access */
-
-	
-	while(!i2c_send(CTRL1_XL));
-	/* Set the register */
-	while(!i2c_send(0b10100010));
-	/* Send stop condition */
-	i2c_stop();
-
-	do {
-		i2c_start();
-	} while(!i2c_send(LSM6DSOX_ADDR << 1));
-	/* Send register number we want to access */
-	while(!i2c_send(CTRL6_C));
-	/* Set the register */
-	while(!i2c_send(0b11100100));
-	/* Send stop condition */
-	i2c_stop();
-
-	do {
-		i2c_start();
-	} while(!i2c_send(LSM6DSOX_ADDR << 1));
-	/* Send register number we want to access */
-	while(!i2c_send(CTRL3_C));
-	/* Set the register */
-	while(!i2c_send(0b01000000));
-	/* Send stop condition */
-	i2c_stop();
-
-	do {
-		i2c_start();
-	} while(!i2c_send(LSM6DSOX_ADDR << 1));
-	/* Send register number we want to access */
-	while(!i2c_send(CTRL4_C));
-	/* Set the register */
-	while(!i2c_send(0b00001000));
-	/* Send stop condition */
-	i2c_stop();
-
+	// Set-up
+	i2c_write_register(CTRL3_C, 0b10000001); // Reset device
+	i2c_write_register(FUNC_CFG_ACCESS, 0x0);
+	i2c_write_register(CTRL1_XL, 0b10100000);
+	i2c_write_register(CTRL2_G, 0b10100000);
+	i2c_write_register(CTRL3_C, 0b01000000);
+	i2c_write_register(CTRL4_C, 0x0);
+	i2c_write_register(CTRL5_C, 0x0);
+	i2c_write_register(CTRL6_C, 0x0);
+	i2c_write_register(CTRL7_G, 0x0);
+	i2c_write_register(CTRL8_XL, 0b11010000);
+	i2c_write_register(CTRL9_XL, 0x0);
+	i2c_write_register(CTRL10_C, 0x0);
 	i2c_write_register(FIFO_CTRL3, 0x0);
 	i2c_write_register(FIFO_CTRL4, 0x0);
-	i2c_read_register(FUNC_CFG_ACCESS);
-	test_out = i2c_recv();
+	//
+
+	test_out = i2c_read_register(FUNC_CFG_ACCESS);
 	i2c_nack();
 	i2c_stop();
 	sprintf(buffstr, "%d", test_out);
@@ -614,38 +572,22 @@ int main(void) {
 
 	
 	for(;;) {
-		/* 
-			Reading MSB accelerometer X-axis
-		 */
-		/* Send start condition and address of the temperature sensor with
-		write flag (lowest bit = 0) until the temperature sensor sends
-		acknowledge condition */
-		do {
-			i2c_start();
-		} while(!i2c_send(LSM6DSOX_ADDR << 1));
-		/* Send register number we want to access */
-		// Ask for X
+		uart_write_line("----");
+		test_out = i2c_read_register(CTRL8_XL);
+		i2c_nack();
+		i2c_stop();
+		sprintf(buffstr, "%d", test_out);
+		uart_write_line(buffstr);
+		uart_write_line("----");
 
-		do {
-			//display_string(2, "waiting");
-			//display_updatee();
-		} while(!i2c_send(OUTX_H_A));
+		accelerometer_x = i2c_read_register(OUTX_H_A) << 8;
+		i2c_nack();
+		i2c_stop();
 
-		//display_string(2,"-----");
-		//display_updatee();
 
-		/* Now send another start condition and address of the temperature sensor with
-		read mode (lowest bit = 1) until the temperature sensor sends
-		acknowledge condition */
-		do {
-			i2c_start();
-		} while(!i2c_send((LSM6DSOX_ADDR << 1) | 1));
-
-		
-		/* Now we can start receiving data from the sensor data register */
-		accelerometer_x = i2c_recv() << 8;
-		i2c_ack();
-		accelerometer_x |= i2c_recv();
+		accelerometer_x |= i2c_read_register(OUTX_L_A);
+		i2c_nack();
+		i2c_stop();
 		sprintf(buffstr, "%d", accelerometer_x);
 		uart_write_line(buffstr);
 		// display_stringg(2, "test");
@@ -654,10 +596,8 @@ int main(void) {
 		//i2c_ack();
 		display_updatee();
 		/* To stop receiving, send nack and stop */
-		i2c_nack();																							// I2C Bus gets stuck here
 		//display_string(2, "nack");
 		display_updatee();
-		i2c_stop();
 		
 		s = fixed_to_string(accelerometer_x, buf);
 		t = s + strlenn(s);
