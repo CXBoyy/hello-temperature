@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "i2c-funcs.h"
 
 #define DISPLAY_VDD_PORT PORTF
 #define DISPLAY_VDD_MASK 0x40
@@ -19,110 +20,6 @@
 #define DISPLAY_COMMAND_DATA_MASK 0x10
 #define DISPLAY_RESET_PORT PORTG
 #define DISPLAY_RESET_MASK 0x200
-
-/* Address of the temperature sensor on the I2C bus */
-#define LSM6DSOX_ADDR 0x6A
-
-/* LSM6DSOX internal registers */
-typedef enum LSM6DSOX_REG LSM6DSOX_REG;
-enum LSM6DSOX_REG {
-	FUNC_CFG_ACCESS = 0x1,
-	PIN_CTRL = 0x2,
-	S4S_TPH_L = 0x4,
-	S4S_TPH_H = 0x5,
-	S4S_RR = 0x6,
-	FIFO_CTRL1 = 0x7,
-	FIFO_CTRL2 = 0x8,
-	FIFO_CTRL3 = 0x9,
-	FIFO_CTRL4 = 0x0A,
-	COUNTER_BDR_REG1 = 0x0B,
-	COUNTER_BDR_REG2 = 0x0C,
-	INT1_CTRL = 0x0D,
-	INT2_CTRL = 0x0E,
-	WHO_AM_I = 0x0F,
-	CTRL1_XL = 0x10,
-	CTRL2_G = 0x11,
-	CTRL3_C = 0x12,
-	CTRL4_C = 0x13,
-	CTRL5_C = 0x14,
-	CTRL6_C = 0x15,
-	CTRL7_G = 0x16,
-	CTRL8_XL = 0x17,
-	CTRL9_XL = 0x18,
-	CTRL10_C = 0x19,
-	ALL_INT_SRC = 0x1A,
-	WAKE_UP_SRC = 0x1B,
-	TAP_SRC = 0x1C,
-	D6D_SRC = 0x1D,
-	STATUS_REG = 0x1E,
-	OUT_TEMP_L = 0x20,
-	OUT_TEMP_H = 0x21,
-	OUTX_L_G = 0x22,
-	OUTX_H_G = 0x23,
-	OUTY_L_G = 0x24,
-	OUTY_H_G = 0x25,
-	OUTZ_L_G = 0x26,
-	OUTZ_H_G = 0x27,
-	OUTX_L_A = 0x28,
-	OUTX_H_A = 0x29,
-	OUTY_L_A = 0x2A,
-	OUTY_H_A = 0x2B,
-	OUTZ_L_A = 0x2C,
-	OUTZ_H_A = 0x2D,
-	EMB_FUNC_STATUS_MAINPAGE = 0x35,
-	FSM_STATUS_A_MAINPAGE = 0x36,
-	FSM_STATUS_B_MAINPAGE = 0x37,
-	MLC_STATUS_MAINPAGE = 0x38,
-	STATUS_MASTER_MAINPAGE = 0x39,
-	FIFO_STATUS1 = 0x3A,
-	FIFO_STATUS2 = 0x3B,
-	TIMESTAMP0 = 0x40,
-	TIMESTAMP1 = 0x41,
-	TIMESTAMP2 = 0x42,
-	TIMESTAMP3 = 0x43,
-	UI_STATUS_REG_OIS = 0x49,
-	UI_OUTX_L_G_OIS = 0x4A,
-	UI_OUTX_H_G_OIS = 0x4B,
-	UI_OUTY_L_G_OIS = 0x4C,
-	UI_OUTY_H_G_OIS = 0x4D,
-	UI_OUTZ_L_G_OIS = 0x4E,
-	UI_OUTZ_H_G_OIS = 0x4F,
-	UI_OUTX_L_A_OIS = 0x50,
-	UI_OUTX_H_A_OIS = 0x51,
-	UI_OUTY_L_A_OIS = 0x52,
-	UI_OUTY_H_A_OIS = 0x53,
-	UI_OUTZ_L_A_OIS = 0x54,
-	UI_OUTZ_H_A_OIS = 0x55,
-	TAP_CFG0 = 0x56,
-	TAP_CFG1 = 0x57,
-	TAP_CFG2 = 0x58,
-	TAP_THS_6D = 0x59,
-	INT_DUR2 = 0x5A,
-	WAKE_UP_THS = 0x5B,
-	WAKE_UP_DUR = 0x5C,
-	FREE_FALL = 0x5D,
-	MD1_CFG = 0x5E,
-	MD2_CFG = 0x5F,
-	S4S_ST_CMD_CODE = 0x60,
-	S4S_DT_REG = 0x61,
-	I3C_BUS_AVB = 0x62,
-	INTERNAL_FREQ_FINE = 0x63,
-	UI_INT_OIS = 0x6F,
-	UI_CTRL1_OIS = 0x70,
-	UI_CTRL2_OIS = 0x71,
-	UI_CTRL3_OIS = 0x72,
-	X_OFS_USR = 0x73,
-	Y_OFS_USR = 0x74,
-	Z_OFS_USR = 0x75,
-	FIFO_DATA_OUT_TAG = 0x78,
-	FIFO_DATA_OUT_X_L = 0x79,
-	FIFO_DATA_OUT_X_H = 0x7A,
-	FIFO_DATA_OUT_Y_L = 0x7B,
-	FIFO_DATA_OUT_Y_H = 0x7C,
-	FIFO_DATA_OUT_Z_L = 0x7D,
-	FIFO_DATA_OUT_Z_H = 0x7E
-};
-
 
 char textbuffer[4][16];
 
@@ -338,103 +235,6 @@ void display_updatee() {
 	}
 }
 
-/* Wait for I2C bus to become idle */
-void i2c_idle() {
-	while(I2C1CON & 0x1F || I2C1STAT & (1 << 14)); //TRSTAT
-}
-
-/* Send one byte on I2C bus, return ack/nack status of transaction */
-bool i2c_send(uint8_t data) {
-	i2c_idle();
-	I2C1TRN = data;
-	i2c_idle();
-	return !(I2C1STAT & (1 << 15)); //ACKSTAT
-}
-
-/* Receive one byte from I2C bus */
-uint8_t i2c_recv() {
-	i2c_idle();
-	I2C1CONSET = 1 << 3; //RCEN = 1
-	i2c_idle();
-	I2C1STATCLR = 1 << 6; //I2COV = 0
-	return I2C1RCV;
-}
-
-/* Send acknowledge conditon on the bus */
-void i2c_ack() {
-	i2c_idle();
-	I2C1CONCLR = 1 << 5; //ACKDT = 0
-	I2C1CONSET = 1 << 4; //ACKEN = 1
-}
-
-/* Send not-acknowledge conditon on the bus */
-void i2c_nack() {
-	i2c_idle();
-	I2C1CONSET = 1 << 5; //ACKDT = 1
-	I2C1CONSET = 1 << 4; //ACKEN = 1
-}
-
-/* Send start conditon on the bus */
-void i2c_start() {
-	i2c_idle();
-	I2C1CONSET = 1 << 0; //SEN
-	i2c_idle();
-}
-
-/* Send restart conditon on the bus */
-void i2c_restart() {
-	i2c_idle();
-	I2C1CONSET = 1 << 1; //RSEN
-	i2c_idle();
-}
-
-/* Send stop conditon on the bus */
-void i2c_stop() {
-	i2c_idle();
-	I2C1CONSET = 1 << 2; //PEN
-	i2c_idle();
-}
-
-int i2c_read_register(int rgstr){
-	int data = 0;
-	do {
-			i2c_start();
-		} while(!i2c_send(LSM6DSOX_ADDR << 1));
-
-		do {
-
-		} while(!i2c_send(rgstr));
-
-		//display_string(2,"-----");
-		//display_updatee();
-
-		/* Now send another start condition and address of the temperature sensor with
-		read mode (lowest bit = 1) until the temperature sensor sends
-		acknowledge condition */
-		do {
-			i2c_start();
-		} while(!i2c_send((LSM6DSOX_ADDR << 1) | 1));
-		
-		data = i2c_recv();
-
-		return data;
-}
-
-void i2c_write_register(int rgstr, int data){
-	do {
-			i2c_start();
-		} while(!i2c_send(LSM6DSOX_ADDR << 1));
-
-		do {
-
-		} while(!i2c_send(rgstr));
-
-		do {
-
-		} while(!i2c_send(data));
-		i2c_stop();
-}
-
 /* Convert 8.8 bit fixed point to string representation*/
 char *fixed_to_string(uint16_t num, char *buf) {
 	bool neg = false;
@@ -484,6 +284,12 @@ int main(void) {
 	uart_write_line("Test");
 
 	uint16_t accelerometer_x;
+	uint16_t accelerometer_y;
+	uint16_t accelerometer_z;
+	uint16_t gyroscope_x;
+	uint16_t gyroscope_y;
+	uint16_t gyroscope_z;
+
 	char buf[32], *s, *t;
 
 	/* Set up peripheral bus clock */
@@ -536,14 +342,22 @@ int main(void) {
 	
 	
 	display_initt();
-	display_stringg(0, "Temperature:");
-	display_stringg(1, "");
-	display_stringg(2, "");
+	char *line1;
+	char *line2;
+	char *line3;
+	display_stringg(0, "A_X: ");
+	display_stringg(1, "A_Y: ");
+	display_stringg(2, "A_Z: ");
 	display_stringg(3, "");
 	display_updatee();
 
-	int accelerometer_y = 0;
-	int accelerometer_z = 0;
+	// Variables
+	accelerometer_x = 0;
+	accelerometer_y = 0;
+	accelerometer_z = 0;
+	gyroscope_x = 0;
+	gyroscope_y = 0;
+	gyroscope_z = 0;
 	int test_out = 0; 
 	
 
@@ -572,42 +386,40 @@ int main(void) {
 
 	
 	for(;;) {
-		uart_write_line("----");
-		test_out = i2c_read_register(CTRL8_XL);
-		i2c_nack();
-		i2c_stop();
-		sprintf(buffstr, "%d", test_out);
-		uart_write_line(buffstr);
-		uart_write_line("----");
 
-		accelerometer_x = i2c_read_register(OUTX_H_A) << 8;
-		i2c_nack();
-		i2c_stop();
+		accelerometer_x = i2c_read_accel_x();
+		accelerometer_y = i2c_read_accel_y();
+		accelerometer_z = i2c_read_accel_z();
+		gyroscope_x 		= i2c_read_gyro_x();
+		gyroscope_y			= i2c_read_gyro_y();
+		gyroscope_z			= i2c_read_gyro_z();		
 
-
-		accelerometer_x |= i2c_read_register(OUTX_L_A);
-		i2c_nack();
-		i2c_stop();
 		sprintf(buffstr, "%d", accelerometer_x);
 		uart_write_line(buffstr);
-		// display_stringg(2, "test");
-		// display_updatee();
-		//display_string(1, "ack");
-		//i2c_ack();
 		display_updatee();
-		/* To stop receiving, send nack and stop */
-		//display_string(2, "nack");
 		display_updatee();
 		
-		s = fixed_to_string(accelerometer_x, buf);
-		t = s + strlenn(s);
+		line1 = fixed_to_string(accelerometer_x, buf);
+		t = line1 + strlenn(line1);
 		*t++ = ' ';
 		*t++ = 7;
-		*t++ = 'C';
+		*t++ = 0;
+
+		line2 = fixed_to_string(accelerometer_y, buf);
+		t = line2 + strlenn(line2);
+		*t++ = ' ';
+		*t++ = 7;
+		*t++ = 0;
+
+		line3 = fixed_to_string(accelerometer_z, buf);
+		t = line3 + strlenn(line3);
+		*t++ = ' ';
+		*t++ = 7;
 		*t++ = 0;
 		
-		display_string(1, s);
-		display_string(2, accelerometer_x);
+		display_string(0, line1);
+		display_string(1, line2);
+		display_string(2, line3);
 		display_updatee();
 		delay(1000000);
 	}
