@@ -160,7 +160,7 @@ void delay(int cyc) {
 	for(i = cyc; i > 0; i--);
 }
 
-uint8_t spi_send_recvv(uint8_t data) {
+uint8_t spi_send_recv(uint8_t data) {
 	while(!(SPI2STAT & 0x08));
 	SPI2BUF = data;
 	while(!(SPI2STAT & 0x01));
@@ -173,31 +173,31 @@ void display_initt() {
 	DISPLAY_VDD_PORT &= ~DISPLAY_VDD_MASK;
 	delay(1000000);
 	
-	spi_send_recvv(0xAE);
+	spi_send_recv(0xAE);
 	DISPLAY_RESET_PORT &= ~DISPLAY_RESET_MASK;
 	delay(10);
 	DISPLAY_RESET_PORT |= DISPLAY_RESET_MASK;
 	delay(10);
 	
-	spi_send_recvv(0x8D);
-	spi_send_recvv(0x14);
+	spi_send_recv(0x8D);
+	spi_send_recv(0x14);
 	
-	spi_send_recvv(0xD9);
-	spi_send_recvv(0xF1);
+	spi_send_recv(0xD9);
+	spi_send_recv(0xF1);
 	
 	DISPLAY_VBATT_PORT &= ~DISPLAY_VBATT_MASK;
 	delay(10000000);
 	
-	spi_send_recvv(0xA1);
-	spi_send_recvv(0xC8);
+	spi_send_recv(0xA1);
+	spi_send_recv(0xC8);
 	
-	spi_send_recvv(0xDA);
-	spi_send_recvv(0x20);
+	spi_send_recv(0xDA);
+	spi_send_recv(0x20);
 	
-	spi_send_recvv(0xAF);
+	spi_send_recv(0xAF);
 }
 
-void display_stringg(int line, char *s) {
+void display_string(int line, char *s) {
 	int i;
 	if(line < 0 || line >= 4)
 		return;
@@ -347,10 +347,10 @@ int main(void) {
 	char *line2;
 	char *line3;
 	char *line4;
-	display_stringg(0, "A_X: ");
-	display_stringg(1, "A_Y: ");
-	display_stringg(2, "A_Z: ");
-	display_stringg(3, "");
+	display_string(0, "A_X: ");
+	display_string(1, "A_Y: ");
+	display_string(2, "A_Z: ");
+	display_string(3, "");
 	display_updatee();
 
 	// Variables
