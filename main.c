@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "i2c-funcs.h"
+#include <math.h>
 
 #define DISPLAY_VDD_PORT PORTF
 #define DISPLAY_VDD_MASK 0x40
@@ -290,7 +291,7 @@ int main(void) {
 	uint16_t gyroscope_y;
 	uint16_t gyroscope_z;
 
-	char buf[32], *s, *t;
+	char buf1[32], buf2[32],buf3[32],buf4[32], *s, *t;
 
 	/* Set up peripheral bus clock */
 	OSCCON &= ~0x180000;
@@ -345,6 +346,7 @@ int main(void) {
 	char *line1;
 	char *line2;
 	char *line3;
+	char *line4;
 	display_stringg(0, "A_X: ");
 	display_stringg(1, "A_Y: ");
 	display_stringg(2, "A_Z: ");
@@ -358,6 +360,8 @@ int main(void) {
 	gyroscope_x = 0;
 	gyroscope_y = 0;
 	gyroscope_z = 0;
+	int angle = 0;
+	int angle2 = 0;
 	int test_out = 0; 
 	
 
@@ -393,26 +397,36 @@ int main(void) {
 		gyroscope_x 		= i2c_read_gyro_x();
 		gyroscope_y			= i2c_read_gyro_y();
 		gyroscope_z			= i2c_read_gyro_z();		
+		//angle = (atan(accelerometer_x/accelerometer_y)) * (180/3.14159);
+		angle = (acos(accelerometer_z)) * (180/3.14159);
+		angle2 = (asin(sqrt(pow(accelerometer_x, 2) + pow(accelerometer_y, 2))) * (180/3.14159));
+		// uart_write_line(sqrt(pow(accelerometer_x, 2) + pow(accelerometer_y, 2)));
 
 		sprintf(buffstr, "%d", accelerometer_x);
 		uart_write_line(buffstr);
 		display_updatee();
 		display_updatee();
 		
-		line1 = fixed_to_string(accelerometer_x, buf);
+		line1 = fixed_to_string(accelerometer_x, buf1);
 		t = line1 + strlenn(line1);
 		*t++ = ' ';
 		*t++ = 7;
 		*t++ = 0;
 
-		line2 = fixed_to_string(accelerometer_y, buf);
+		line2 = fixed_to_string(accelerometer_y, buf2);
 		t = line2 + strlenn(line2);
 		*t++ = ' ';
 		*t++ = 7;
 		*t++ = 0;
 
-		line3 = fixed_to_string(accelerometer_z, buf);
+		line3 = fixed_to_string(accelerometer_z, buf3);
 		t = line3 + strlenn(line3);
+		*t++ = ' ';
+		*t++ = 7;
+		*t++ = 0;
+
+		line4 = fixed_to_string(angle2, buf4);
+		t = line4 + strlenn(line4);
 		*t++ = ' ';
 		*t++ = 7;
 		*t++ = 0;
@@ -420,6 +434,7 @@ int main(void) {
 		display_string(0, line1);
 		display_string(1, line2);
 		display_string(2, line3);
+		display_string(3, line4);
 		display_updatee();
 		delay(1000000);
 	}
